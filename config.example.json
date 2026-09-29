@@ -1,0 +1,17 @@
+{
+  "accounts": {
+    "personal": {
+      "email": "usuario@gmail.com",
+      "display_name": "Nombre Apellido",
+      "description": "Cuenta personal",
+      "browser": "default"
+    },
+    "work": {
+      "email": "usuario@empresa.com",
+      "display_name": "Apellido, Nombre",
+      "description": "Cuenta de trabajo",
+      "browser": "chrome"
+    }
+  },
+  "credentials_dir": "./credentials"
+}

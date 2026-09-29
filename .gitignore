@@ -1,0 +1,16 @@
+credentials/
+client_secret*.json
+token*.json
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Config con datos reales (correos) — usar config.example.json como plantilla
+config.json
+
+# Backups y archivos de prueba locales
+*.bak
+test_stdout.txt
+test_stderr.txt
+RESUMEN-CONVERSACION.md
