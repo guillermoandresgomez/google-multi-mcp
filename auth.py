@@ -3,6 +3,7 @@ import os
 import webbrowser
 from pathlib import Path
 
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -49,6 +50,56 @@ def get_account_email(account: str) -> str:
     return config["accounts"][account]["email"]
 
 
+def _is_revoked(e: Exception) -> bool:
+    msg = str(e)
+    return "invalid_grant" in msg or "Token has been expired or revoked" in msg
+
+
+class _ReauthCredentials(Credentials):
+    """Credentials that recover from a revoked refresh token on their own.
+
+    googleapiclient refreshes credentials *inside* .execute() when Google
+    answers 401 (e.g. the access token looked valid locally but Google had
+    already revoked the grant). That refresh never goes through
+    get_credentials(), so an invalid_grant there used to surface as a tool
+    error. Overriding refresh() covers every call site: on invalid_grant it
+    re-runs the OAuth consent flow, swaps the new tokens into this object
+    (so the in-flight request is retried with them) and persists them.
+    """
+
+    _account: str = ""
+    _token_path: Path | None = None
+    _client_secret_path: Path | None = None
+
+    def refresh(self, request):
+        try:
+            super().refresh(request)
+        except RefreshError as e:
+            if not (_is_revoked(e) and self._account and self._token_path):
+                raise
+            new = _run_oauth_flow(self._account, self._client_secret_path)
+            self.token = new.token
+            self._refresh_token = new.refresh_token
+            self.expiry = new.expiry
+        if self._token_path:
+            _save_token(self._token_path, self)
+
+
+def _save_token(token_path: Path, creds: Credentials) -> None:
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(token_path, "w") as f:
+        f.write(creds.to_json())
+
+
+def _wrap(creds: Credentials, account: str, token_path: Path,
+          client_secret_path: Path) -> _ReauthCredentials:
+    wrapped = _ReauthCredentials.from_authorized_user_info(json.loads(creds.to_json()), SCOPES)
+    wrapped._account = account
+    wrapped._token_path = token_path
+    wrapped._client_secret_path = client_secret_path
+    return wrapped
+
+
 def _run_oauth_flow(account: str, client_secret_path: Path) -> Credentials:
     config = _load_config()
     browser_pref = config["accounts"][account].get("browser", "default")
@@ -88,14 +139,14 @@ def get_credentials(account: str) -> Credentials:
             creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
 
     if creds and creds.valid:
-        return creds
+        return _wrap(creds, account, token_path, client_secret_path)
 
     if creds and creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
         except Exception as e:
             # Token revoked or expired — delete it and re-authenticate
-            if "invalid_grant" in str(e) or "Token has been expired or revoked" in str(e):
+            if _is_revoked(e):
                 token_path.unlink(missing_ok=True)
                 creds = _run_oauth_flow(account, client_secret_path)
             else:
@@ -103,8 +154,5 @@ def get_credentials(account: str) -> Credentials:
     else:
         creds = _run_oauth_flow(account, client_secret_path)
 
-    token_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(token_path, "w") as f:
-        f.write(creds.to_json())
-
-    return creds
+    _save_token(token_path, creds)
+    return _wrap(creds, account, token_path, client_secret_path)

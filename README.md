@@ -117,7 +117,7 @@ Definidos en `SCOPES` de [auth.py](auth.py):
 
 `gmail.modify`, `gmail.send`, `calendar`, `drive.readonly`, `drive.file`, `tasks`
 
-Si se agrega un scope nuevo, [auth.py](auth.py) detecta que el token guardado no lo incluye, lo borra y vuelve a pedir consentimiento en el navegador. Un token revocado o vencido (`invalid_grant`) se maneja igual.
+Si se agrega un scope nuevo, [auth.py](auth.py) detecta que el token guardado no lo incluye, lo borra y vuelve a pedir consentimiento en el navegador. Un token revocado o vencido (`invalid_grant`) se maneja igual. Esto incluye el caso en que Google revoca el token mientras el access token local aún parece vigente: la renovación que hace la librería dentro de la llamada a la API pasa por `_ReauthCredentials.refresh()`, que relanza el login y reintenta la petición.
 
 ## Estructura
 

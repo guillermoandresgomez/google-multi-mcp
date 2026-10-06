@@ -14,3 +14,6 @@ config.json
 test_stdout.txt
 test_stderr.txt
 RESUMEN-CONVERSACION.md
+
+# Backups con fecha
+*.bak-*

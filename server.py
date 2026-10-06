@@ -39,22 +39,28 @@ def gmail_read(account: str, message_id: str) -> dict:
 
 @mcp.tool()
 def gmail_read_thread(account: str, thread_id: str) -> dict:
-    """Read all messages in an email thread."""
+    """Read all messages in an email thread. Each message includes subject, from, to, cc, date, snippet and body (plain text; HTML is converted)."""
     return gmail.read_thread(account, thread_id)
 
 
 @mcp.tool()
 def gmail_send(account: str, to: str, subject: str, body: str,
-               attachments: list[str] | None = None) -> dict:
-    """Send an email from the specified account. Optionally attach local files by providing their full Windows paths (e.g. 'C:\\Users\\ag87r\\Documents\\report.pdf')."""
-    return gmail.send_email(account, to, subject, body, attachments)
+               attachments: list[str] | None = None,
+               thread_id: str | None = None,
+               cc: str | None = None) -> dict:
+    """Send an email from the specified account. Optionally attach local files by providing their full Windows paths (e.g. 'C:\\Users\\ag87r\\Documents\\report.pdf').
+    'to' and 'cc' accept one or more addresses separated by commas.
+    To reply inside an existing conversation, pass thread_id (from gmail_search/gmail_read): the message is added to that thread and the In-Reply-To/References headers are set automatically so it nests correctly. Keep subject as 'Re: <original subject>' for proper threading."""
+    return gmail.send_email(account, to, subject, body, attachments, thread_id, cc=cc)
 
 
 @mcp.tool()
 def gmail_create_draft(account: str, to: str, subject: str, body: str,
-                       attachments: list[str] | None = None) -> dict:
-    """Create an email draft in the specified account. Optionally attach local files by providing their full Windows paths (e.g. 'C:\\Users\\ag87r\\Documents\\report.pdf')."""
-    return gmail.create_draft(account, to, subject, body, attachments)
+                       attachments: list[str] | None = None,
+                       cc: str | None = None) -> dict:
+    """Create an email draft in the specified account. Optionally attach local files by providing their full Windows paths (e.g. 'C:\\Users\\ag87r\\Documents\\report.pdf').
+    'to' and 'cc' accept one or more addresses separated by commas."""
+    return gmail.create_draft(account, to, subject, body, attachments, cc=cc)
 
 
 @mcp.tool()
